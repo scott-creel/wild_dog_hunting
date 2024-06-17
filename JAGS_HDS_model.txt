@@ -1,0 +1,52 @@
+# hierarchical distance sampling model
+cat("
+model{
+  #priors
+  alpha0 ~ dunif(-10,10) # intercept of log(sigma)in a half-normal detection function
+  alpha1 ~ dunif(-10,10) # effect of groupsize-1 on log(sigma)
+  
+  beta0 ~ dunif(-10,10) # intercept for density (ind/km) - reference habitat is open woodland
+  beta1 ~ dunif(-10,10) # lambda covariate for distance to river
+  beta2 ~ dunif(-10,10) # lambda covariate for tree cover proportion
+  beta3 ~ dunif(-10,10) # lambda covariate for annual burn probability
+  beta4 ~ dunif(-10,10) # lambda covariate for distance to stream
+
+  #Data Augmentation parameter
+  psi <- sum(offlambda[]) / M # this is the only place absolute abundance plays a role
+  
+  #overdispersion for mixed group size (for detection)
+  lambda.mixgroup ~ dgamma(0.1,0.1) #hyperprior for mean herd size
+  rmix ~ dunif(0.1,100) #hyperprior for overdispersion
+  pmixgroup<-rmix/(rmix+lambda.mixgroup)
+  
+  #overdispersion for species group size (for individal density)
+  lambda.group ~ dgamma(0.1,0.1) #hyperprior for mean herd size
+  r ~ dunif(0.1,100) #hyperprior for overdispersion
+  pgroup<-r/(r+lambda.group)
+  
+  # individual(herd)-level detection model and site of occurence
+  for(i in 1:M){
+    groupsize[i] ~ dnegbin(pgroup, r) # for estimating individual density, not for detection 
+    z[i] ~ dbern(psi) # does the ind exist
+    d[i] ~ dunif(0,B) # distance (continuous) is uniform dist
+    mixgroupsize[i] ~ dnegbin(pmixgroup, rmix) # for estimating detection 
+    site[i] ~ dcat(site.probs[1:nsites]) # pop distribution among sites
+    #zg[i] <- z[i]*(1 + groupsize[i])   # for estimate total numbers 
+    log(sigma[i]) <- alpha0 + alpha1*pow(mixgroupsize[i],0.5)
+    p[i] <- exp(-d[i]*d[i]/(2*sigma[i]*sigma[i])) # half norm det based on dist and parms
+  }
+
+  #observation model for each herd
+  for(i in 1:M){
+    y[i] ~ dbern(p[i]*z[i])
+  }
+  
+  #models for herd density and site probability
+  for (s in 1:nsites){ # for each site
+    log(lambda[s]) <- beta0 + beta1*dist_to_river[s] + beta2*treecover[s] + beta3*burnfreq[s] + beta4*dist_to_stream[s] 
+    offlambda[s]<-lambda[s]*site_effort[s] # density adjusted for size of the area and number of times it was surveyed 
+    site.probs[s] <- offlambda[s]/sum(offlambda[]) # for dcat, the probability a random herd occurs at each site 
+  }
+  meanherddensity<-mean(lambda[1:nsites])
+ 
+}",fill=TRUE, file="DA_allsurveys_p.mixgroupsize_lam.treeriverburn.txt")
