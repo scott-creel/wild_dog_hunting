@@ -108,7 +108,12 @@ plot(gma)
 protection <- park + gma
 plot(protection)
 
-# can load workspace Lion_UD_6Apr24 to avoid running dBBMM code
+#########################################################
+# LIONS --------------------------------------------------
+#########################################################
+
+# load workspace Lion_UD_6Apr24 to avoid running dBBMM code
+# from Goodheart et al.'s published analysis
 # make naming format consistent
 load("Lion_UD_6Apr24.RData")
 LI2022 <- LI_2022_WM_Raster
@@ -117,11 +122,11 @@ LI2022_Dry <- LI_2022Dry_WM_Raster
 # Rasters with dry season or full year lion UD for 2022 and 2023 lion data
 
 # LI2022 
-# LI2022_Dry will use these for DD tag analysis
+# LI2022_Dry will use these for DD tag analysis for best temporal match
 # LI2023
-# LI2023_Dry will use these for DD tag analysis
+# LI2023_Dry will use these for DD tag analysis for best temporal match
 
-#remove highly extreme values on each end, less than 0.1% of the data
+#remove extreme outliers on each end, less than 0.1% of the data
 LI2022_Dry <- reclassify(LI2022_Dry, cbind(0, 1.000327e-18 , NA))
 LI2022_Dry <- reclassify(LI2022_Dry, cbind(0.030021615,0.5, 0.030021615))
 summary(LI2022_Dry)
@@ -169,9 +174,10 @@ DD_dog_locs <- left_join(DD_dog_locs, pack_props, by = 'Pack')
 
 write.table(DD_dog_locs, file='DD_dogs_with_all_covs_gke_2022.csv', append=FALSE, sep= ',', row.names = FALSE, col.names=TRUE)
 
+# examine autocorrelation structure
 ar(DD_dog_locs$VeDBA.smoothed)
 
-
+# examine raw relationship VeDBA v prey biomass
 library(ggsci)
 ggplot(data = DD_dog_locs, aes(x = prey_biomass_extract, y = VeDBA.smoothed, 
                                group = 1, colour = as.factor(Pack))) +
